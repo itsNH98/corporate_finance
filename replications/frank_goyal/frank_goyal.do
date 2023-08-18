@@ -7,6 +7,8 @@
 
 // 1.1 DATA  ---------------
 
+cd "/Users/nicolasharvie/Mirror/Work/research/main/corporate_finance/replications/frank_goyal"
+
 clear
 use myData
 
@@ -137,14 +139,41 @@ foreach v of var * {
 save cleanFundamentals, replace
 clear
 
-use cleanFundamentals
-
-* Merging with the mean_vol
-merge m:1 gvkey fyearq using "mean_vol.dta"
-drop _merge
+* Merging winsorized data with the average volatility
+use mean_vol
+rename mva_vol mean_mva_vol
 rename fyearq fiscal_year
+save mean_vol, replace
 
-save mergedFundamentals, replace
+clear
+use winsorizedData
+merge m:1 gvkey fiscal_year using "mean_vol.dta"
+
+save mergedFull, replace
+
+drop if missing(mean_mva_vol)
+
+* Lagged mean volatility
+sort gvkey fiscal_year
+by gvkey: gen l_mean_mva_vol = mean_mva_vol[_n-1]
+
+
+* FE Regression 
+reghdfe l_tdmv_w industry_leverage_w tangibility_w mb_w profit_w log_assets div_int mean_mva_vol , absorb(gvkey fiscal_year)
+
+* Clustered Regression
+reghdfe l_tdmv_w industry_leverage_w tangibility_w mb_w profit_w log_assets div_int mean_mva_vol, noabsorb vce(cluster gvkey fiscal_year)
+
+
+// And we're done ! 
+
+
+
+
+
+
+
+
 
 
 
